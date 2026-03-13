@@ -7,7 +7,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:unit1_project/models/user.dart';
+import 'package:unit1_project/modelviews/user_viewmodel.dart';
 import 'package:unit1_project/widgets/c_listTile.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -26,17 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController languageCtrl = TextEditingController();
 
   final Color appAccent = Colors.white;
-  final User u = User(
-    null,
-    'Robin',
-    'James',
-    '0815532801',
-    'robinjames@gmail.com',
-    'Software Developer',
-    'Flutter',
-  );
-
-  File? _selectedImage;
+  bool _isInit = false;
 
   // show modal functions
   void editProfilePictureDialog() {
@@ -131,10 +123,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   trailing: Icon(Icons.delete, color: Colors.red),
                   onTap: () {
-                    setState(() {
-                      _selectedImage = null;
-                      Navigator.pop(context);
-                    });
+                    context.read<UserViewModel>().updateImage(null);
                   },
                 ),
               ),
@@ -194,9 +183,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          u.name = nameCtrl.text;
-                        });
+                        nameCtrl.text = context
+                            .read<UserViewModel>()
+                            .updateName(nameCtrl.text);
 
                         Navigator.pop(context);
                       },
@@ -290,10 +279,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          u.surname = surnameCtrl.text;
-                        });
-
+                        surnameCtrl.text = context
+                            .read<UserViewModel>()
+                            .updateSurame(surnameCtrl.text);
                         Navigator.pop(context);
                       },
                       child: Text(
@@ -386,10 +374,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          u.phone = phoneCtrl.text;
-                        });
-
+                        phoneCtrl.text = context
+                            .read<UserViewModel>()
+                            .updatePhone(phoneCtrl.text);
                         Navigator.pop(context);
                       },
                       child: Text(
@@ -482,10 +469,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          u.email = emailCtrl.text;
-                        });
-
+                        emailCtrl.text = context
+                            .read<UserViewModel>()
+                            .updateEmail(emailCtrl.text);
                         Navigator.pop(context);
                       },
                       child: Text(
@@ -578,9 +564,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          u.role = roleCtrl.text;
-                        });
+                        roleCtrl.text = context
+                            .read<UserViewModel>()
+                            .updateRole(roleCtrl.text);
 
                         Navigator.pop(context);
                       },
@@ -674,9 +660,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          u.language = languageCtrl.text;
-                        });
+                        languageCtrl.text = context
+                            .read<UserViewModel>()
+                            .updateLanguage(languageCtrl.text);
 
                         Navigator.pop(context);
                       },
@@ -723,42 +709,46 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // image picker functions
-  Future pickImageFromLibrary() async {
+  Future<void> pickImageFromLibrary() async {
     final returnedImage = await ImagePicker().pickImage(
       source: ImageSource.gallery,
     );
 
     if (returnedImage == null) return;
+    if (!mounted) return;
 
-    setState(() {
-      _selectedImage = File(returnedImage.path);
-      u.image = _selectedImage!;
-    });
+    final image = File(returnedImage.path);
+    context.read<UserViewModel>().updateImage(image);
   }
 
-  Future takeImageFromCamera() async {
+  Future<void> takeImageFromCamera() async {
     final returnedImage = await ImagePicker().pickImage(
       source: ImageSource.camera,
     );
 
     if (returnedImage == null) return;
+    if (!mounted) return;
 
-    setState(() {
-      _selectedImage = File(returnedImage.path);
-      u.image = _selectedImage!;
-    });
+    final image = File(returnedImage.path);
+    context.read<UserViewModel>().updateImage(image);
   }
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    nameCtrl.text = u.name;
-    surnameCtrl.text = u.surname;
-    phoneCtrl.text = u.phone;
-    emailCtrl.text = u.email;
-    roleCtrl.text = u.role;
-    languageCtrl.text = u.language;
+    if (!_isInit) {
+      final user = context.read<UserViewModel>().user;
+
+      nameCtrl.text = user.name;
+      surnameCtrl.text = user.surname;
+      phoneCtrl.text = user.phone;
+      emailCtrl.text = user.email;
+      roleCtrl.text = user.role;
+      languageCtrl.text = user.language;
+
+      _isInit = true;
+    }
   }
 
   @override
@@ -814,22 +804,27 @@ class _ProfilePageState extends State<ProfilePage> {
             top: 30,
             left: 0,
             right: 0,
-            child: CircleAvatar(
-              backgroundColor: Color(0xFF333333),
-              radius: 60,
-              child: ClipOval(
-                child: _selectedImage != null
-                    ? Image.file(
-                        _selectedImage!,
-                        fit: BoxFit.cover,
-                        height: 120,
-                        width: 120,
-                      )
-                    : const Icon(
-                        Icons.camera_alt_outlined,
-                        color: Colors.white,
-                      ),
-              ),
+            child: Selector<UserViewModel, File?>(
+              selector: (context, viewmodel) => viewmodel.image,
+              builder: (context, model, child) {
+                return CircleAvatar(
+                  backgroundColor: Color(0xFF333333),
+                  radius: 60,
+                  child: ClipOval(
+                    child: model != null
+                        ? Image.file(
+                            model,
+                            fit: BoxFit.cover,
+                            height: 120,
+                            width: 120,
+                          )
+                        : const Icon(
+                            Icons.camera_alt_outlined,
+                            color: Colors.white,
+                          ),
+                  ),
+                );
+              },
             ),
           ),
 
@@ -853,41 +848,46 @@ class _ProfilePageState extends State<ProfilePage> {
             left: 20,
             right: 20,
             bottom: 0,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  CListTile(
-                    label: 'Name',
-                    userInfo: u.name,
-                    onTap: editNameDialog,
+            child: Selector<UserViewModel, User>(
+              selector: (context, viewmodel) => viewmodel.user,
+              builder: (context, model, child) {
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      CListTile(
+                        label: 'Name',
+                        userInfo: model.name,
+                        onTap: editNameDialog,
+                      ),
+                      CListTile(
+                        label: 'Surname',
+                        userInfo: model.surname,
+                        onTap: editSurnameDialog,
+                      ),
+                      CListTile(
+                        label: 'Phone',
+                        userInfo: model.phone,
+                        onTap: editPhoneDialog,
+                      ),
+                      CListTile(
+                        label: 'Email',
+                        userInfo: model.email,
+                        onTap: editEmailDialog,
+                      ),
+                      CListTile(
+                        label: 'Role',
+                        userInfo: model.role,
+                        onTap: editRoleDialog,
+                      ),
+                      CListTile(
+                        label: 'Programming Language',
+                        userInfo: model.language,
+                        onTap: editLanguageDialog,
+                      ),
+                    ],
                   ),
-                  CListTile(
-                    label: 'Surname',
-                    userInfo: u.surname,
-                    onTap: editSurnameDialog,
-                  ),
-                  CListTile(
-                    label: 'Phone',
-                    userInfo: u.phone,
-                    onTap: editPhoneDialog,
-                  ),
-                  CListTile(
-                    label: 'Email',
-                    userInfo: u.email,
-                    onTap: editEmailDialog,
-                  ),
-                  CListTile(
-                    label: 'Role',
-                    userInfo: u.role,
-                    onTap: editRoleDialog,
-                  ),
-                  CListTile(
-                    label: 'Programming Language',
-                    userInfo: u.language,
-                    onTap: editLanguageDialog,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],

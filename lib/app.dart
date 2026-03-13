@@ -4,6 +4,8 @@
 //                    upload a profile image from gallery or using camera.
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:unit1_project/modelviews/user_viewmodel.dart';
 import 'package:unit1_project/views/profile.dart';
 
 class App extends StatelessWidget {
@@ -11,6 +13,9 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: ProfilePage());
+    return ChangeNotifierProvider(
+      create: (context) => UserViewModel(),
+      child: MaterialApp(home: ProfilePage()),
+    );
   }
 }
